@@ -1,3 +1,12 @@
+# [1.8.0](https://github.com/dbfx/wsl-cleaner/compare/v1.7.1...v1.8.0) (2026-02-24)
+
+
+### Features
+
+* remove stale directory scanner ([da4ee28](https://github.com/dbfx/wsl-cleaner/commit/da4ee28d14aa056e263e5406365d13bc52db2e69))
+
+
+
 ## [1.7.1](https://github.com/dbfx/wsl-cleaner/compare/v1.7.0...v1.7.1) (2026-02-17)
 
 
