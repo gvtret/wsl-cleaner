@@ -6,6 +6,7 @@ Designed for developers who use Windows 10/11 with WSL2, and have large WSL2 vol
 
 [![Download](https://img.shields.io/badge/Download-Latest%20Release-brightgreen?style=for-the-badge)](https://github.com/dbfx/wsl-cleaner/releases)
 [![Website](https://img.shields.io/badge/Website-wsl--cleaner.blakey.co-00d4aa?style=for-the-badge)](https://wsl-cleaner.blakey.co)
+[![Downloads](https://img.shields.io/github/downloads/dbfx/wsl-cleaner/total.svg?style=for-the-badge)](https://github.com/dbfx/wsl-cleaner/releases)
 
 ![WSL Cleaner](assets/combo.png)
 
@@ -343,3 +344,4 @@ wsl-cleaner/
 ## License
 
 [MIT](LICENSE)
+
