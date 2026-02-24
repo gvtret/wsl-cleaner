@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-WSL Cleaner is a desktop Electron application for Windows 10/11 that cleans, optimizes, and compacts WSL 2 virtual disks. It provides a Simple one-click mode and an Advanced mode with granular control over 40+ cleanup tasks, a stale directory scanner, VHDX disk compaction, and a Health Dashboard with real-time system metrics.
+WSL Cleaner is a desktop Electron application for Windows 10/11 that cleans, optimizes, and compacts WSL 2 virtual disks. It provides a Simple one-click mode and an Advanced mode with granular control over 40+ cleanup tasks, VHDX disk compaction, and a Health Dashboard with real-time system metrics.
 
 ## Tech Stack
 
@@ -18,8 +18,8 @@ WSL Cleaner is a desktop Electron application for Windows 10/11 that cleans, opt
 ```
 Electron Main Process (Node.js)
   ├── main.js              # Window lifecycle, IPC handlers, auto-updater
-  ├── lib/wsl-ops.js       # WSL command execution, VHDX discovery, stale scanning, disk usage, health, distro management, config editor
-  ├── lib/utils.js         # parseWslOutput, friendlyError, exitCodeHint, STALE_DIR_NAMES
+  ├── lib/wsl-ops.js       # WSL command execution, VHDX discovery, disk usage, health, distro management, config editor
+  ├── lib/utils.js         # parseWslOutput, friendlyError, exitCodeHint
   ├── lib/stats-db.js      # Cleanup history persistence (JSON file)
   └── lib/preferences.js   # Task toggle + locale preference persistence
 

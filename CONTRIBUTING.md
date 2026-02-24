@@ -17,7 +17,7 @@ wsl-cleaner/
 ├── preload.js           # contextBridge exposing window.wslCleaner API
 ├── cli.js               # Standalone CLI (node cli.js --help)
 ├── lib/
-│   ├── wsl-ops.js       # WSL commands, VHDX discovery, stale scanning, health info, distro management, config editor
+│   ├── wsl-ops.js       # WSL commands, VHDX discovery, health info, distro management, config editor
 │   ├── utils.js         # Pure helpers — parseWslOutput, friendlyError, etc.
 │   ├── stats-db.js      # Cleanup history persistence (JSON)
 │   ├── perf-db.js       # Performance benchmark history persistence (JSON)
@@ -40,7 +40,7 @@ wsl-cleaner/
 | Layer | File(s) | Responsibility |
 |-------|---------|----------------|
 | Main process | `main.js` | Window lifecycle, IPC handlers, auto-updater events |
-| Libraries | `lib/wsl-ops.js` | WSL command execution, VHDX discovery & optimization, stale scanning, health info, distro export/import/clone/restart/comparison/migration, config editor (read/write .wslconfig and wsl.conf) |
+| Libraries | `lib/wsl-ops.js` | WSL command execution, VHDX discovery & optimization, health info, distro export/import/clone/restart/comparison/migration, config editor (read/write .wslconfig and wsl.conf) |
 | Libraries | `lib/utils.js` | Pure utility functions — output parsing, error mapping |
 | Libraries | `lib/stats-db.js`, `lib/perf-db.js`, `lib/preferences.js` | JSON-backed persistence for history, benchmarks, and preferences |
 | Preload | `preload.js` | `contextBridge` that exposes `window.wslCleaner` to the renderer |

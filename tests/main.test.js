@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-const { filterNoise, parseWslOutput, isValidExternalUrl, STALE_DIR_NAMES, friendlyError, exitCodeHint } = require('../lib/utils');
+const { filterNoise, parseWslOutput, isValidExternalUrl, friendlyError, exitCodeHint } = require('../lib/utils');
 
 // ── filterNoise ──────────────────────────────────────────────────────────────
 
@@ -128,33 +128,6 @@ describe('isValidExternalUrl', () => {
 
   it('rejects empty string', () => {
     expect(isValidExternalUrl('')).toBe(false);
-  });
-});
-
-// ── STALE_DIR_NAMES ──────────────────────────────────────────────────────────
-
-describe('STALE_DIR_NAMES', () => {
-  it('is a non-empty array', () => {
-    expect(Array.isArray(STALE_DIR_NAMES)).toBe(true);
-    expect(STALE_DIR_NAMES.length).toBeGreaterThan(0);
-  });
-
-  it('contains expected common entries', () => {
-    const expected = ['node_modules', 'vendor', '__pycache__', '.next', 'dist', '.venv', 'venv'];
-    for (const name of expected) {
-      expect(STALE_DIR_NAMES).toContain(name);
-    }
-  });
-
-  it('contains only strings', () => {
-    for (const name of STALE_DIR_NAMES) {
-      expect(typeof name).toBe('string');
-    }
-  });
-
-  it('has no duplicates', () => {
-    const unique = new Set(STALE_DIR_NAMES);
-    expect(unique.size).toBe(STALE_DIR_NAMES.length);
   });
 });
 

@@ -24,11 +24,10 @@ const c = {
 function parseArgs(argv) {
   const args = argv.slice(2);
   const opts = {
-    action: null,        // list | clean | scan-stale | compact | list-tasks
+    action: null,        // list | clean | compact | list-tasks
     distro: null,
     tasks: null,         // array of task IDs, or null for all
     exclude: [],         // task IDs to skip
-    days: 30,
     dryRun: false,
     json: false,
     noAggressive: false,
@@ -43,7 +42,6 @@ function parseArgs(argv) {
     switch (arg) {
       case '--list':          opts.action = 'list'; break;
       case '--clean':         opts.action = 'clean'; break;
-      case '--scan-stale':    opts.action = 'scan-stale'; break;
       case '--compact':       opts.action = 'compact'; break;
       case '--list-tasks':    opts.action = 'list-tasks'; break;
       case '--distro': case '-d':
@@ -52,8 +50,6 @@ function parseArgs(argv) {
         opts.tasks = args[++i]?.split(',').map(s => s.trim()).filter(Boolean); break;
       case '--exclude':
         opts.exclude = args[++i]?.split(',').map(s => s.trim()).filter(Boolean) || []; break;
-      case '--days':
-        opts.days = parseInt(args[++i], 10) || 30; break;
       case '--dry-run':       opts.dryRun = true; break;
       case '--json':          opts.json = true; break;
       case '--no-aggressive': opts.noAggressive = true; break;
@@ -104,7 +100,6 @@ ${c.bold}USAGE${c.reset}
 ${c.bold}ACTIONS${c.reset}
   ${c.cyan}--list${c.reset}              List available WSL 2 distributions
   ${c.cyan}--clean${c.reset}             Run cleanup tasks on a distribution
-  ${c.cyan}--scan-stale${c.reset}        Scan for stale directories (node_modules, vendor, etc.)
   ${c.cyan}--compact${c.reset}           Compact VHDX virtual disk files
   ${c.cyan}--list-tasks${c.reset}        Show all available cleanup task IDs
 
@@ -112,7 +107,6 @@ ${c.bold}OPTIONS${c.reset}
   ${c.cyan}--distro, -d${c.reset} <name>  Target WSL distribution (uses default if omitted)
   ${c.cyan}--tasks, -t${c.reset} <ids>    Run only these task IDs (comma-separated)
   ${c.cyan}--exclude${c.reset} <ids>      Skip these task IDs (comma-separated)
-  ${c.cyan}--days${c.reset} <n>           Stale directory age threshold in days (default: 30)
   ${c.cyan}--dry-run${c.reset}            Preview actions without executing
   ${c.cyan}--json${c.reset}               Machine-readable JSON output
   ${c.cyan}--no-aggressive${c.reset}      Skip tasks marked as aggressive
@@ -139,9 +133,6 @@ ${c.bold}EXAMPLES${c.reset}
 
   ${c.dim}# Preview what would be cleaned${c.reset}
   wsl-cleaner --clean -d Ubuntu --dry-run
-
-  ${c.dim}# Scan for stale directories older than 60 days${c.reset}
-  wsl-cleaner --scan-stale -d Ubuntu --days 60
 
   ${c.dim}# Compact VHDX disk after cleanup${c.reset}
   wsl-cleaner --compact
@@ -334,35 +325,6 @@ async function actionClean(opts) {
   if (failed > 0) process.exitCode = 1;
 }
 
-// ── Action: scan stale directories ───────────────────────────────────────────
-
-async function actionScanStale(opts) {
-  const distro = resolveDistro(opts);
-
-  if (!opts.json) info(`${c.bold}Scanning for stale directories in ${distro} (older than ${opts.days} days)...${c.reset}\n`);
-
-  const results = await wslOps.scanStaleDirs({ distro, days: opts.days });
-
-  if (results.length === 0) {
-    if (opts.json) {
-      console.log(JSON.stringify({ ok: true, distro, days: opts.days, directories: [] }));
-    } else {
-      info('  No stale directories found.');
-    }
-    return;
-  }
-
-  if (opts.json) {
-    console.log(JSON.stringify({ ok: true, distro, days: opts.days, directories: results }, null, 2));
-  } else {
-    info(`  ${c.bold}Found ${results.length} stale director${results.length === 1 ? 'y' : 'ies'}:${c.reset}\n`);
-    for (const dir of results) {
-      info(`  ${c.yellow}${(dir.size || '?').padStart(8)}${c.reset}  ${dir.path}`);
-    }
-    info(`\n  ${c.dim}Tip: Manually review and delete these, or use the GUI's stale directory cleaner.${c.reset}\n`);
-  }
-}
-
 // ── Action: compact VHDX ─────────────────────────────────────────────────────
 
 async function actionCompact(opts) {
@@ -505,9 +467,6 @@ async function main() {
       break;
     case 'clean':
       await actionClean(opts);
-      break;
-    case 'scan-stale':
-      await actionScanStale(opts);
       break;
     case 'compact':
       await actionCompact(opts);

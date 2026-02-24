@@ -67,21 +67,21 @@ describe('t (fallback to English)', () => {
 describe('tp', () => {
   beforeEach(() => {
     _setStringsForTest({
-      'stale.found_one': 'Found {count} stale directory ({size})',
-      'stale.found_other': 'Found {count} stale directories ({size})',
+      'stats.weeksAgo_one': '{count} week ago',
+      'stats.weeksAgo_other': '{count} weeks ago',
     });
   });
 
   it('uses _one suffix when count is 1', () => {
-    expect(tp('stale.found', 1, { size: '50 MB' })).toBe('Found 1 stale directory (50 MB)');
+    expect(tp('stats.weeksAgo', 1)).toBe('1 week ago');
   });
 
   it('uses _other suffix when count is not 1', () => {
-    expect(tp('stale.found', 5, { size: '120 MB' })).toBe('Found 5 stale directories (120 MB)');
+    expect(tp('stats.weeksAgo', 5)).toBe('5 weeks ago');
   });
 
   it('uses _other suffix for count 0', () => {
-    expect(tp('stale.found', 0, { size: '0 B' })).toBe('Found 0 stale directories (0 B)');
+    expect(tp('stats.weeksAgo', 0)).toBe('0 weeks ago');
   });
 });
 

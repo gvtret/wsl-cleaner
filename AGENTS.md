@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-WSL Cleaner is a desktop Electron application for Windows 10/11 that cleans, optimizes, and compacts WSL 2 (Windows Subsystem for Linux) virtual disks. It provides a Simple one-click mode and an Advanced mode with granular control over 40+ cleanup tasks, a stale directory scanner, VHDX disk compaction via `Optimize-VHD`, and a Health Dashboard with real-time system metrics (memory, CPU, disk, network, ports, DNS, Docker, systemd, GPU, and more).
+WSL Cleaner is a desktop Electron application for Windows 10/11 that cleans, optimizes, and compacts WSL 2 (Windows Subsystem for Linux) virtual disks. It provides a Simple one-click mode and an Advanced mode with granular control over 40+ cleanup tasks, VHDX disk compaction via `Optimize-VHD`, and a Health Dashboard with real-time system metrics (memory, CPU, disk, network, ports, DNS, Docker, systemd, GPU, and more).
 
 Target audience: developers running WSL 2 with large virtual disk images who want to reclaim SSD space and monitor their WSL environment.
 
@@ -21,8 +21,8 @@ Target audience: developers running WSL 2 with large virtual disk images who wan
 ```
 Electron Main Process (Node.js)
   ├── main.js              # Window lifecycle, IPC handlers, auto-updater
-  ├── lib/wsl-ops.js       # WSL command execution, VHDX discovery, stale scanning, disk usage scanning, health info, distro export/import/clone/restart/comparison/migration, config editor (read/write .wslconfig and wsl.conf)
-  ├── lib/utils.js         # parseWslOutput, friendlyError, exitCodeHint, STALE_DIR_NAMES
+  ├── lib/wsl-ops.js       # WSL command execution, VHDX discovery, disk usage scanning, health info, distro export/import/clone/restart/comparison/migration, config editor (read/write .wslconfig and wsl.conf)
+  ├── lib/utils.js         # parseWslOutput, friendlyError, exitCodeHint
   ├── lib/stats-db.js      # Cleanup history persistence (JSON file)
   ├── lib/perf-db.js       # Performance benchmark history persistence (JSON file)
   └── lib/preferences.js   # Task toggle + locale preference persistence
@@ -81,8 +81,8 @@ All communication between main and renderer uses Electron's `ipcMain.handle` / `
 |------|---------|
 | `main.js` | Electron app lifecycle, all IPC handlers, auto-updater events, locale data serving |
 | `preload.js` | Exposes `window.wslCleaner` API (WSL ops, preferences, locale, updates) |
-| `lib/wsl-ops.js` | `checkWsl`, `detectTools`, `runCleanupTask`, `findVhdx`, `optimizeVhdx`, `scanStaleDirs`, `deleteStaleDirs`, `estimateTaskSizes`, `scanDiskUsage`, `cancelDiskScan`, `getHealthInfo`, `exportDistro`, `importDistro`, `cloneDistro`, `restartDistro`, `unregisterDistro`, `getDefaultUser`, `getDriveSpace`, `setDefaultUser`, `migrateDistro`, `getDistroComparison`, `getSystemResources`, `readWslConfig`, `writeWslConfig`, `readWslConf`, `writeWslConf`, `benchmarkStartupTime`, `profileShellStartup` |
-| `lib/utils.js` | Pure utility functions: `filterNoise`, `parseWslOutput`, `friendlyError`, `exitCodeHint`, `isValidExternalUrl`, `STALE_DIR_NAMES` |
+| `lib/wsl-ops.js` | `checkWsl`, `detectTools`, `runCleanupTask`, `findVhdx`, `optimizeVhdx`, `estimateTaskSizes`, `scanDiskUsage`, `cancelDiskScan`, `getHealthInfo`, `exportDistro`, `importDistro`, `cloneDistro`, `restartDistro`, `unregisterDistro`, `getDefaultUser`, `getDriveSpace`, `setDefaultUser`, `migrateDistro`, `getDistroComparison`, `getSystemResources`, `readWslConfig`, `writeWslConfig`, `readWslConf`, `writeWslConf`, `benchmarkStartupTime`, `profileShellStartup` |
+| `lib/utils.js` | Pure utility functions: `filterNoise`, `parseWslOutput`, `friendlyError`, `exitCodeHint`, `isValidExternalUrl` |
 | `lib/stats-db.js` | Read/write cleanup history to a JSON file in userData |
 | `lib/perf-db.js` | Read/write performance benchmark history to a JSON file in userData |
 | `lib/preferences.js` | Read/write task toggles and locale preference to JSON files in userData |
@@ -91,7 +91,7 @@ All communication between main and renderer uses Electron's `ipcMain.handle` / `
 | `renderer/utils.js` | `formatBytes`, `escapeHtml`, `estimateTotalSize`, `exitCodeHint` (returns i18n keys) |
 | `renderer/tasks.js` | `TASKS` array with 40+ entries. Each has `id`, `name`, `desc`, `command`, `asRoot`, `requires`, optional `estimateCommand`, optional `aggressive` |
 | `renderer/treemap.js` | Squarified treemap layout algorithm and DOM-based renderer. Exposes `window.Treemap` with `buildTree`, `findNode`, `squarify`, `renderTreemap` |
-| `renderer/app.js` | All UI logic: navigation, distro picker, task card rendering, cleanup execution, stale scanning, disk compaction, disk map treemap, health dashboard, distro manager (comparison table, export/import/clone/restart), config editor (.wslconfig and wsl.conf), stats/charts, update checking, language selector |
+| `renderer/app.js` | All UI logic: navigation, distro picker, task card rendering, cleanup execution, disk compaction, disk map treemap, health dashboard, distro manager (comparison table, export/import/clone/restart), config editor (.wslconfig and wsl.conf), stats/charts, update checking, language selector |
 | `renderer/styles.css` | Full dark-mode stylesheet, custom properties for colors |
 | `cli.js` | Standalone CLI for headless/scripted usage (`wsl-cleaner --clean -d Ubuntu`). Exports `parseArgs`, `stripHtml`, `formatBytes` for testing |
 
@@ -116,7 +116,7 @@ All communication between main and renderer uses Electron's `ipcMain.handle` / `
 4. **Dynamic JS text** uses the `t()` function:
    ```js
    t('status.readyCount', { count: 3 })           // "WSL 2 Ready — 3 distro(s) found"
-   tp('stale.found', dirs.length, { count: 5, size: '120 MB' })  // plural-aware
+   tp('stats.cleanups', count, { count: 3 })                     // plural-aware
    tError(backendErrorString)                       // reverse-maps English → i18n key
    ```
 
@@ -136,7 +136,7 @@ All communication between main and renderer uses Electron's `ipcMain.handle` / `
 ### Key Conventions
 
 - **Flat keys with dot notation:** `"section.subsection.element"` (e.g., `"compact.noVhdx"`, `"log.shuttingDown"`)
-- **Plurals:** Use `_one` / `_other` suffixes (e.g., `"stale.found_one"`, `"stale.found_other"`)
+- **Plurals:** Use `_one` / `_other` suffixes (e.g., `"stats.cleanups_one"`, `"stats.cleanups_other"`)
 - **Placeholders:** `{name}` syntax (e.g., `"Found {count} directories"`)
 - **HTML in values:** Allowed and expected for keys with `<code>`, `<strong>`, `<span>` tags. Use `data-i18n-html` in the DOM or set via `innerHTML` in JS.
 - **Fallback chain:** Current locale → English (`en.json`) → raw key string

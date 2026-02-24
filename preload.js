@@ -23,10 +23,6 @@ contextBridge.exposeInMainWorld('wslCleaner', {
   runWslCommand: (opts) => ipcRenderer.invoke('run-wsl-command', opts),
   optimizeVhdx: (opts) => ipcRenderer.invoke('optimize-vhdx', opts),
 
-  // Stale directory scanning
-  scanStaleDirs: (opts) => ipcRenderer.invoke('scan-stale-dirs', opts),
-  deleteStaleDirs: (opts) => ipcRenderer.invoke('delete-stale-dirs', opts),
-
   // Size estimation
   estimateTaskSizes: (opts) => ipcRenderer.invoke('estimate-task-sizes', opts),
 

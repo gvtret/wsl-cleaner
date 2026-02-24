@@ -223,19 +223,6 @@ ipcMain.handle('run-wsl-command', async (event, { command, taskId }) => {
   return wslOps.runWslCommand({ command, taskId, onOutput });
 });
 
-// ── Scan for stale directories inside WSL ────────────────────────────────────
-
-ipcMain.handle('scan-stale-dirs', async (_event, { distro, days }) => {
-  return wslOps.scanStaleDirs({ distro, days });
-});
-
-// ── Delete stale directories inside WSL ──────────────────────────────────────
-
-ipcMain.handle('delete-stale-dirs', async (_event, { distro, paths, taskId }) => {
-  const onOutput = (data) => mainWindow?.webContents.send('task-output', data);
-  return wslOps.deleteStaleDirs({ distro, paths, taskId, onOutput });
-});
-
 // ── Optimize VHDX via elevated PowerShell ────────────────────────────────────
 
 ipcMain.handle('optimize-vhdx', async (_event, { vhdxPath, taskId }) => {

@@ -13,7 +13,6 @@ describe('parseArgs', () => {
     expect(opts.distro).toBeNull();
     expect(opts.tasks).toBeNull();
     expect(opts.exclude).toEqual([]);
-    expect(opts.days).toBe(30);
     expect(opts.dryRun).toBe(false);
     expect(opts.json).toBe(false);
     expect(opts.noAggressive).toBe(false);
@@ -30,10 +29,6 @@ describe('parseArgs', () => {
 
   it('parses --clean action', () => {
     expect(parse('--clean').action).toBe('clean');
-  });
-
-  it('parses --scan-stale action', () => {
-    expect(parse('--scan-stale').action).toBe('scan-stale');
   });
 
   it('parses --compact action', () => {
@@ -73,15 +68,6 @@ describe('parseArgs', () => {
   it('parses --exclude as comma-separated list', () => {
     const opts = parse('--exclude', 'docker-prune,git-gc');
     expect(opts.exclude).toEqual(['docker-prune', 'git-gc']);
-  });
-
-  // Days
-  it('parses --days with numeric value', () => {
-    expect(parse('--days', '60').days).toBe(60);
-  });
-
-  it('defaults to 30 for invalid --days value', () => {
-    expect(parse('--days', 'abc').days).toBe(30);
   });
 
   // Boolean flags

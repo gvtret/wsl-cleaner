@@ -13,8 +13,6 @@ let state = {
   taskEnabled: {},
   taskSearch: '',          // search filter for task cards
   
-  staleEnabled: true,     // whether stale directory cleanup is enabled
-  staleDays: 30,          // stale directory age threshold in days
   compactEnabled: true,   // whether disk compaction runs after cleaning
   soundEnabled: true,     // whether whoosh sound plays on cleanup completion
   isRunning: false,
@@ -57,8 +55,6 @@ TASKS.forEach(t => (state.taskEnabled[t.id] = !t.aggressive));
 function saveTaskPreferences() {
   window.wslCleaner.saveTaskPreferences({
     ...state.taskEnabled,
-    _staleEnabled: state.staleEnabled,
-    _staleDays: state.staleDays,
     _compactEnabled: state.compactEnabled,
     _soundEnabled: state.soundEnabled,
   });
@@ -983,23 +979,7 @@ function showAggressiveConfirmation(aggressiveTasks) {
   });
 }
 
-// ── Settings page: stale & compact toggle wiring ─────────────────────────────
-
-const staleEnabledCb = $('#stale-enabled-cb');
-const staleDaysInput = $('#stale-days-input');
-
-// Stale directory toggle
-staleEnabledCb.addEventListener('change', () => {
-  state.staleEnabled = staleEnabledCb.checked;
-  staleDaysInput.disabled = !state.staleEnabled;
-  saveTaskPreferences();
-});
-
-// Stale days input
-staleDaysInput.addEventListener('change', () => {
-  state.staleDays = Math.max(1, parseInt(staleDaysInput.value, 10) || 30);
-  saveTaskPreferences();
-});
+// ── Settings page: compact toggle wiring ──────────────────────────────────────
 
 // Compact toggle
 compactEnabledCb.addEventListener('change', () => {
@@ -1192,7 +1172,6 @@ btnSimpleGo.addEventListener('click', async () => {
 
   const simpleStart = Date.now();
   let simpleTotalRun = 0, simpleTotalOk = 0, simpleTotalFail = 0;
-  let simpleStaleFound = 0, simpleStaleDeleted = 0;
   const failedTasks = [];
   const taskSavingsMap = {}; // { taskId: { name, spaceSaved } }
 
@@ -1203,48 +1182,7 @@ btnSimpleGo.addEventListener('click', async () => {
     totalBefore += res.ok ? res.size : 0;
   }
 
-  // Step 1: Scan & remove stale directories on each distro (if enabled in Settings)
-  const staleStepItem = simpleSteps.querySelector('.step-item[data-step="stale"]');
-  if (state.staleEnabled) {
-    if (staleStepItem) staleStepItem.style.display = '';
-    setSimpleStep('stale', 'active');
-    for (const distro of state.selectedDistros) {
-      let stalePaths = [];
-      try {
-        const staleDirsFound = await window.wslCleaner.scanStaleDirs({ distro, days: state.staleDays });
-        stalePaths = staleDirsFound.map(d => d.path);
-        simpleStaleFound += stalePaths.length;
-      } catch { /* scan failed, continue anyway */ }
-
-      if (stalePaths.length > 0) {
-        const beforeStale = await window.wslCleaner.getAvailableSpace(distro);
-        try {
-          const delResults = await window.wslCleaner.deleteStaleDirs({
-            distro,
-            paths: stalePaths,
-            taskId: 'simple-stale',
-          });
-          simpleStaleDeleted += delResults.filter(r => r.ok).length;
-        } catch { /* ignore deletion errors */ }
-        const afterStale = await window.wslCleaner.getAvailableSpace(distro);
-        if (beforeStale.ok && afterStale.ok) {
-          const delta = afterStale.bytes - beforeStale.bytes;
-          if (delta > 0) {
-            if (!taskSavingsMap['_stale']) {
-              taskSavingsMap['_stale'] = { name: t('result.breakdownStale'), spaceSaved: 0 };
-            }
-            taskSavingsMap['_stale'].spaceSaved += delta;
-          }
-        }
-      }
-    }
-    setSimpleStep('stale', 'done');
-  } else {
-    // Hide stale step when disabled in Settings
-    if (staleStepItem) staleStepItem.style.display = 'none';
-  }
-
-  // Step 2: Run cleanup tasks on each distro (respects task toggles from Settings)
+  // Step 1: Run cleanup tasks on each distro (respects task toggles from Settings)
   setSimpleStep('cleanup', 'active');
   let cleanupOk = true;
   const cleanupErrors = [];
@@ -1434,8 +1372,6 @@ btnSimpleGo.addEventListener('click', async () => {
     failBox._failedTasks = null;
   }
 
-  $('#result-stale-found').textContent = simpleStaleFound;
-  $('#result-stale-deleted').textContent = simpleStaleDeleted;
   $('#result-duration').textContent = durationM + ':' + String(durationS).padStart(2, '0');
 
   // Build per-task savings breakdown
@@ -1466,8 +1402,6 @@ btnSimpleGo.addEventListener('click', async () => {
     tasksRun: simpleTotalRun,
     tasksSucceeded: simpleTotalOk,
     tasksFailed: simpleTotalFail,
-    staleDirsFound: simpleStaleFound,
-    staleDirsDeleted: simpleStaleDeleted,
     durationMs,
     taskBreakdown: taskSavings,
   });
@@ -2110,9 +2044,6 @@ function renderHistoryList(history) {
     if (r.tasksRun != null && r.tasksRun > 0) {
       detailsHtml += `<span class="history-detail">${t('history.tasks', { success: r.tasksSucceeded || 0, total: r.tasksRun })}</span>`;
     }
-    if (r.staleDirsDeleted != null && r.staleDirsDeleted > 0) {
-      detailsHtml += `<span class="history-detail">${t('history.dirsRemoved', { count: r.staleDirsDeleted })}</span>`;
-    }
     if (!detailsHtml) {
       detailsHtml = `<span class="history-detail" style="color:var(--text-muted)">${t('history.noSizeData')}</span>`;
     }
@@ -2353,11 +2284,7 @@ async function init() {
   try {
     const savedPrefs = await window.wslCleaner.getTaskPreferences();
     for (const [key, value] of Object.entries(savedPrefs)) {
-      if (key === '_staleEnabled') {
-        state.staleEnabled = !!value;
-      } else if (key === '_staleDays') {
-        state.staleDays = Math.max(1, parseInt(value, 10) || 30);
-      } else if (key === '_compactEnabled') {
+      if (key === '_compactEnabled') {
         state.compactEnabled = !!value;
       } else if (key === '_soundEnabled') {
         state.soundEnabled = !!value;
@@ -2402,9 +2329,6 @@ async function init() {
   } catch { /* use defaults if preferences can't be loaded */ }
 
   // Apply restored settings to UI controls
-  staleEnabledCb.checked = state.staleEnabled;
-  staleDaysInput.value = state.staleDays;
-  staleDaysInput.disabled = !state.staleEnabled;
   compactEnabledCb.checked = state.compactEnabled;
   if (soundEnabledCb) soundEnabledCb.checked = state.soundEnabled;
 

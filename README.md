@@ -13,7 +13,7 @@ Designed for developers who use Windows 10/11 with WSL2, and have large WSL2 vol
 
 ### Cleaner
 
-One-click "Clean & Compact" that runs all enabled cleanup tasks, removes stale directories, runs filesystem TRIM, and compacts your virtual disk automatically. Shows step-by-step progress with a live timer and before/after disk size comparison. Failed steps show expandable error details so you can see exactly what went wrong. Celebration effects play when space is saved (confetti for 1 GB+).
+One-click "Clean & Compact" that runs all enabled cleanup tasks, runs filesystem TRIM, and compacts your virtual disk automatically. Shows step-by-step progress with a live timer and before/after disk size comparison. Failed steps show expandable error details so you can see exactly what went wrong. Celebration effects play when space is saved (confetti for 1 GB+).
 
 You can also run "Clean only" mode (without compaction) for a faster pass that skips the WSL shutdown/restart cycle.
 
@@ -90,12 +90,6 @@ These tasks are disabled by default and marked with an orange badge. Enable them
 - Clean All User Caches -- blanket `~/.cache/*` removal (may break active app sessions)
 - Remove Man Pages & Docs -- deletes `/usr/share/man`, `/usr/share/doc`, `/usr/share/info` (saves 200-400 MB; regenerated on package reinstall)
 - Remove Unused Locales -- removes all non-English locale data from `/usr/share/locale` (saves 100+ MB; do not use if you need non-English locales)
-
-#### Stale Directory Scanner
-
-Toggle on to automatically find and remove old dependency, build, and cache directories that haven't been modified in a configurable number of days. Scans for:
-
-`node_modules`, `vendor`, `__pycache__`, `.next`, `.nuxt`, `.turbo`, `.yarn`, `target`, `.gradle`, `.tox`, `.pytest_cache`, `.mypy_cache`, `dist`, `.parcel-cache`, `.cache`, `.venv`, `venv`, `elm-stuff`, `.terraform`, `.serverless`, `.nx`
 
 #### Disk Compaction Toggle
 
@@ -257,13 +251,11 @@ node cli.js [options]
 Options:
   --list               Show available WSL distros
   --clean              Run cleanup tasks
-  --scan-stale         Find old directories
   --compact            Compact VHDX files
   --list-tasks         Show all 60+ task IDs
   --distro, -d <name>  Target distribution
   --tasks, -t <ids>    Comma-separated task IDs
   --exclude <ids>      Skip specific tasks
-  --days <n>           Stale directory age threshold
   --dry-run            Preview without executing
   --json               Machine-readable output
   --no-aggressive      Skip destructive tasks
@@ -322,7 +314,7 @@ wsl-cleaner/
   preload.js           # Secure bridge (contextBridge -> window.wslCleaner)
   cli.js               # Standalone CLI (node cli.js --help)
   lib/
-    wsl-ops.js         # WSL commands, VHDX discovery, stale scanning, health info, distro management & migration
+    wsl-ops.js         # WSL commands, VHDX discovery, health info, distro management & migration
     tray-manager.js    # System tray icon, context menu, background health polling
     utils.js           # Pure helpers — parseWslOutput, friendlyError, etc.
     stats-db.js        # Cleanup history persistence (JSON)

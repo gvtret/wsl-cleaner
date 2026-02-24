@@ -24,7 +24,7 @@ function t(key, params) {
 
 /**
  * Plural-aware translation.  Uses _one / _other suffix convention.
- * @param {string} key - Base key without suffix (e.g. "stale.found")
+ * @param {string} key - Base key without suffix (e.g. "stats.weeksAgo")
  * @param {number} count
  * @param {Object} [params] - Additional placeholders
  * @returns {string}
