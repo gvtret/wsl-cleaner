@@ -199,6 +199,13 @@ app.whenReady().then(() => {
   statsDb.init(userData);
   perfDb.init(userData);
   preferences.init(userData);
+
+  // Remove any stale helper scripts orphaned by a previous run.
+  try {
+    const swept = wslOps.sweepTempScripts();
+    if (swept > 0) log.info(`Swept ${swept} stale temp script(s).`);
+  } catch { /* non-fatal */ }
+
   createWindow();
 
   // Initialise system tray if enabled
