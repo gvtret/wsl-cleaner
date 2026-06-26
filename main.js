@@ -39,6 +39,64 @@ let isQuitting = false;
 
 let mainWindow;
 
+// ── Live Output file logging ─────────────────────────────────────────────────
+let liveOutputLogStream = null;
+let liveOutputLogPath = null;
+
+function getLiveOutputLogPath() {
+  try {
+    const logsDir = path.join(app.getPath('userData'), 'logs');
+    if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const stamp =
+      d.getFullYear() +
+      pad(d.getMonth() + 1) +
+      pad(d.getDate()) +
+      '-' +
+      pad(d.getHours()) +
+      pad(d.getMinutes()) +
+      pad(d.getSeconds());
+    return path.join(logsDir, `live-output-${stamp}.log`);
+  } catch {
+    return null;
+  }
+}
+
+function ensureLiveOutputLogStream() {
+  if (liveOutputLogStream) return;
+  liveOutputLogPath = getLiveOutputLogPath();
+  if (!liveOutputLogPath) return;
+  try {
+    liveOutputLogStream = fs.createWriteStream(liveOutputLogPath, { flags: 'a' });
+    liveOutputLogStream.write(`--- WSL Cleaner Live Output Log (${new Date().toISOString()}) ---\n`);
+  } catch {
+    liveOutputLogStream = null;
+    liveOutputLogPath = null;
+  }
+}
+
+function appendLiveOutputToFile({ taskId, text }) {
+  try {
+    ensureLiveOutputLogStream();
+    if (!liveOutputLogStream) return;
+    const ts = new Date().toISOString();
+    const id = taskId ? String(taskId) : 'unknown';
+    // Preserve original newlines; prefix each line for readability
+    const lines = String(text ?? '').replace(/\r\n/g, '\n').split('\n');
+    for (const line of lines) {
+      if (line === '') continue;
+      liveOutputLogStream.write(`[${ts}] [${id}] ${line}\n`);
+    }
+  } catch { /* ignore */ }
+}
+
+function emitTaskOutput(data) {
+  if (!data) return;
+  mainWindow?.webContents.send('task-output', data);
+  appendLiveOutputToFile(data);
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1440,
@@ -56,6 +114,18 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+
+  // Defence in depth: the app only ever loads its bundled local UI. Deny any
+  // attempt to open new windows, and block navigation away from the local
+  // renderer. External links must go through the validated open-external IPC.
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (isValidExternalUrl(url)) shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (url !== mainWindow.webContents.getURL()) event.preventDefault();
+  });
 
   // Check for updates after the window is ready
   mainWindow.webContents.on('did-finish-load', () => {
@@ -140,6 +210,12 @@ app.whenReady().then(() => {
 
 app.on('before-quit', () => {
   isQuitting = true;
+  try {
+    if (liveOutputLogStream) {
+      liveOutputLogStream.end(`--- End (${new Date().toISOString()}) ---\n`);
+      liveOutputLogStream = null;
+    }
+  } catch { /* ignore */ }
 });
 
 app.on('window-all-closed', () => {
@@ -194,7 +270,7 @@ ipcMain.handle('detect-tools', async (_event, distro) => wslOps.detectTools(dist
 let cleanupQueue = Promise.resolve();
 
 ipcMain.handle('run-cleanup', async (event, opts) => {
-  const onOutput = (data) => mainWindow?.webContents.send('task-output', data);
+  const onOutput = (data) => emitTaskOutput(data);
   // Queue each task so they run strictly one at a time
   const result = new Promise((resolve) => {
     cleanupQueue = cleanupQueue.then(() =>
@@ -206,7 +282,7 @@ ipcMain.handle('run-cleanup', async (event, opts) => {
 
 // ── Find VHDX files ──────────────────────────────────────────────────────────
 
-ipcMain.handle('find-vhdx', async (_event, _distro) => wslOps.findVhdx());
+ipcMain.handle('find-vhdx', async (_event, distro) => wslOps.findVhdx(distro));
 
 // ── Get file size ────────────────────────────────────────────────────────────
 
@@ -219,14 +295,14 @@ ipcMain.handle('get-available-space', async (_event, distro) => wslOps.getAvaila
 // ── Run Windows-side WSL commands (shutdown, update, etc.) ───────────────────
 
 ipcMain.handle('run-wsl-command', async (event, { command, taskId }) => {
-  const onOutput = (data) => mainWindow?.webContents.send('task-output', data);
+  const onOutput = (data) => emitTaskOutput(data);
   return wslOps.runWslCommand({ command, taskId, onOutput });
 });
 
 // ── Optimize VHDX via elevated PowerShell ────────────────────────────────────
 
 ipcMain.handle('optimize-vhdx', async (_event, { vhdxPath, taskId }) => {
-  const onOutput = (data) => mainWindow?.webContents.send('task-output', data);
+  const onOutput = (data) => emitTaskOutput(data);
   return wslOps.optimizeVhdx({ vhdxPath, taskId, onOutput });
 });
 
@@ -326,22 +402,22 @@ ipcMain.handle('save-task-preferences', (_event, prefs) => {
 // ── Distro management ─────────────────────────────────────────────────────────
 
 ipcMain.handle('export-distro', async (event, { distro, targetPath, taskId }) => {
-  const onOutput = (data) => mainWindow?.webContents.send('task-output', data);
+  const onOutput = (data) => emitTaskOutput(data);
   return wslOps.exportDistro({ distro, targetPath, taskId, onOutput });
 });
 
 ipcMain.handle('import-distro', async (event, { name, installLocation, tarPath, taskId }) => {
-  const onOutput = (data) => mainWindow?.webContents.send('task-output', data);
+  const onOutput = (data) => emitTaskOutput(data);
   return wslOps.importDistro({ name, installLocation, tarPath, taskId, onOutput });
 });
 
 ipcMain.handle('clone-distro', async (event, { distro, newName, installLocation, taskId }) => {
-  const onOutput = (data) => mainWindow?.webContents.send('task-output', data);
+  const onOutput = (data) => emitTaskOutput(data);
   return wslOps.cloneDistro({ distro, newName, installLocation, taskId, onOutput });
 });
 
 ipcMain.handle('restart-distro', async (event, { distro, taskId }) => {
-  const onOutput = (data) => mainWindow?.webContents.send('task-output', data);
+  const onOutput = (data) => emitTaskOutput(data);
   return wslOps.restartDistro({ distro, taskId, onOutput });
 });
 
@@ -360,12 +436,12 @@ ipcMain.handle('get-drive-space', async (_event, drivePath) => {
 });
 
 ipcMain.handle('unregister-distro', async (event, { distro, taskId }) => {
-  const onOutput = (data) => mainWindow?.webContents.send('task-output', data);
+  const onOutput = (data) => emitTaskOutput(data);
   return wslOps.unregisterDistro({ distro, taskId, onOutput });
 });
 
 ipcMain.handle('migrate-distro', async (event, { distro, destinationPath, defaultUser, keepBackup, taskId }) => {
-  const onOutput = (data) => mainWindow?.webContents.send('task-output', data);
+  const onOutput = (data) => emitTaskOutput(data);
   const onStep = (data) => mainWindow?.webContents.send('migrate-step', data);
   return wslOps.migrateDistro({ distro, destinationPath, defaultUser, keepBackup, taskId, onOutput, onStep });
 });

@@ -1131,7 +1131,7 @@ const btnSimpleGoLabel = $('#btn-simple-go-label');
 
 btnSimpleGo.addEventListener('click', async () => {
   if (state.isRunning) return;
-  if (state.vhdxFiles.length === 0) return;
+  const hasVhdx = state.vhdxFiles.length > 0;
 
   // Check for aggressive tasks and prompt confirmation
   const aggressiveTasks = getEnabledAggressiveTasks();
@@ -1140,7 +1140,11 @@ btnSimpleGo.addEventListener('click', async () => {
     if (!confirmed) return;
   }
 
-  const doCompact = state.compactEnabled;
+  // If we can't locate a VHDX, we can still run cleanup + TRIM, but must skip compaction.
+  const doCompact = state.compactEnabled && hasVhdx;
+  if (state.compactEnabled && !hasVhdx) {
+    cfgShowToast(t('simple.vhdxNotFoundCompactDisabled'), 'error');
+  }
 
   state.isRunning = true;
   btnSimpleGo.disabled = true;
@@ -1175,11 +1179,13 @@ btnSimpleGo.addEventListener('click', async () => {
   const failedTasks = [];
   const taskSavingsMap = {}; // { taskId: { name, spaceSaved } }
 
-  // Measure total VHDX size before
+  // Measure total VHDX size before (only if we found VHDX files)
   let totalBefore = 0;
-  for (const vf of state.vhdxFiles) {
-    const res = await window.wslCleaner.getFileSize(vf.path);
-    totalBefore += res.ok ? res.size : 0;
+  if (hasVhdx) {
+    for (const vf of state.vhdxFiles) {
+      const res = await window.wslCleaner.getFileSize(vf.path);
+      totalBefore += res.ok ? res.size : 0;
+    }
   }
 
   // Step 1: Run cleanup tasks on each distro (respects task toggles from Settings)
@@ -1332,19 +1338,21 @@ btnSimpleGo.addEventListener('click', async () => {
   if (simpleProgressFill) simpleProgressFill.style.width = '100%';
   if (progressHeader) progressHeader.querySelector('.orbital-spinner')?.classList.add('hidden');
 
-  // Measure total VHDX size after
+  // Measure total VHDX size after (only if we found VHDX files)
   let totalAfter = 0;
-  for (const vf of state.vhdxFiles) {
-    const res = await window.wslCleaner.getFileSize(vf.path);
-    totalAfter += res.ok ? res.size : 0;
+  if (hasVhdx) {
+    for (const vf of state.vhdxFiles) {
+      const res = await window.wslCleaner.getFileSize(vf.path);
+      totalAfter += res.ok ? res.size : 0;
+    }
   }
   const saved = totalBefore - totalAfter;
 
   const durationMs = Date.now() - simpleStart;
 
   // Show results
-  simpleSizeBefore.textContent = formatBytes(totalBefore);
-  simpleSizeAfter.textContent = formatBytes(totalAfter);
+  simpleSizeBefore.textContent = hasVhdx ? formatBytes(totalBefore) : '—';
+  simpleSizeAfter.textContent = hasVhdx ? formatBytes(totalAfter) : '—';
   const compactHint = $('#result-compact-hint');
   if (!doCompact) {
     simpleSpaceSaved.textContent = '—';
@@ -1451,12 +1459,12 @@ $('#result-fail-box').addEventListener('click', () => {
 
   failLogList.innerHTML = tasks.map(f => {
     const output = f.output
-      ? `<pre class="fail-log-output">${f.output.replace(/</g, '&lt;')}</pre>`
+      ? `<pre class="fail-log-output">${escapeHtml(f.output)}</pre>`
       : '';
-    const code = f.code != null ? `<span class="fail-log-code">Exit code ${f.code}</span>` : '';
+    const code = f.code != null ? `<span class="fail-log-code">Exit code ${escapeHtml(String(f.code))}</span>` : '';
     return `<div class="fail-log-item">
-      <div class="fail-log-task">${f.name.replace(/</g, '&lt;')}</div>
-      <div class="fail-log-distro">${f.distro.replace(/</g, '&lt;')} ${code}</div>
+      <div class="fail-log-task">${escapeHtml(f.name)}</div>
+      <div class="fail-log-distro">${escapeHtml(f.distro)} ${code}</div>
       ${output}
     </div>`;
   }).join('');

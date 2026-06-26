@@ -104,7 +104,8 @@ const TASKS = [
     id: 'snap-old-revisions',
     name: 'Remove Old Snap Revisions',
     desc: 'Removes disabled snap revisions sitting in <code>/var/lib/snapd/snaps</code>. Can reclaim several GB.',
-    command: "snap list --all 2>/dev/null | awk '/disabled/{print $1, $3}' | while read snapname revision; do echo \"Removing $snapname revision $revision\"; snap remove \"$snapname\" --revision=\"$revision\" 2>/dev/null; done; echo \"Old snap revisions removed\"",
+    // Escape $ so bash doesn't expand awk fields before awk runs.
+    command: "snap list --all 2>/dev/null | awk '/disabled/{print \\$1, \\$3}' | while read snapname revision; do echo \"Removing $snapname revision $revision\"; snap remove \"$snapname\" --revision=\"$revision\" 2>/dev/null; done; echo \"Old snap revisions removed\"",
     asRoot: true,
     requires: 'snap',
     category: 'pkg-managers',
@@ -124,7 +125,8 @@ const TASKS = [
     id: 'vscode-old-bins',
     name: 'Clean Old VS Code / Cursor / Windsurf Server Binaries',
     desc: 'Removes old server binaries from <code>~/.vscode-server/bin</code>, <code>~/.cursor-server/bin</code>, and <code>~/.windsurf-server/bin</code>, keeping only the latest version. Each old version is ~200 MB.',
-    command: 'for base in ~/.vscode-server/bin ~/.cursor-server/bin ~/.windsurf-server/bin; do [ -d "$base" ] || continue; latest=$(ls -td "$base"/*/ 2>/dev/null | head -1); [ -z "$latest" ] && continue; for d in "$base"/*/; do [ "$d" = "$latest" ] && continue; echo "Removing old binary: $d"; rm -rf "$d"; done; done; echo "Old server binaries cleaned"',
+    // Avoid shell-specific globbing errors (e.g. zsh "no matches found") by enumerating directories safely.
+    command: 'setopt nonomatch 2>/dev/null || true; set +o nomatch 2>/dev/null || true; for base in ~/.vscode-server/bin ~/.cursor-server/bin ~/.windsurf-server/bin; do [ -d "$base" ] || continue; latest=$(find "$base" -mindepth 1 -maxdepth 1 -type d -exec stat -c "%Y %n" {} + 2>/dev/null | sort -nr | head -1 | awk \'{ $1=""; sub(/^ /,""); print }\'); [ -z "$latest" ] && continue; find "$base" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | while IFS= read -r d; do [ "$d" = "$latest" ] && continue; echo "Removing old binary: $d"; rm -rf "$d"; done; done; echo "Old server binaries cleaned"',
     asRoot: false,
     requires: null,
     category: 'user-editor',
@@ -252,7 +254,7 @@ const TASKS = [
     id: 'docker-prune',
     name: 'Clean Docker Dangling Artifacts',
     desc: 'Removes dangling (untagged) images, unused networks, and stale build cache. All named/tagged images, containers, and volumes are preserved.',
-    command: 'docker image prune -f 2>/dev/null && docker network prune -f 2>/dev/null && docker builder prune -f 2>/dev/null && echo "Docker dangling artifacts cleaned"',
+    command: 'docker info >/dev/null 2>&1 || { echo "Docker CLI found but daemon is not running — skipping Docker cleanup"; exit 0; }; docker image prune -f 2>/dev/null && docker network prune -f 2>/dev/null && docker builder prune -f 2>/dev/null && echo "Docker dangling artifacts cleaned"',
     asRoot: false,
     requires: 'docker',
     category: 'containers',
