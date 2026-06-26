@@ -17,6 +17,9 @@ cp.spawn = (...args) => {
 };
 
 const wslOps = require('../lib/wsl-ops');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 
 beforeEach(() => {
   calls.execFileSync.length = 0;
@@ -117,5 +120,54 @@ describe('runWslCommand — only "wsl" is permitted', () => {
     const [file, args] = calls.spawn[0];
     expect(file).toBe('wsl');
     expect(args).toEqual(['--shutdown']);
+  });
+});
+
+// ── Startup sweep of orphaned temp scripts ────────────────────────────────────
+
+describe('sweepTempScripts', () => {
+  let dir;
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wsl-cleaner-sweep-test-'));
+  });
+
+  const write = (name, ageMs) => {
+    const full = path.join(dir, name);
+    fs.writeFileSync(full, 'x');
+    if (ageMs) {
+      const t = (Date.now() - ageMs) / 1000;
+      fs.utimesSync(full, t, t);
+    }
+    return full;
+  };
+
+  it('removes stale wsl-cleaner scripts older than maxAge', () => {
+    const old = write('wsl-cleaner-health-deadbeef.sh', 2 * 60 * 60 * 1000); // 2h old
+    const removed = wslOps.sweepTempScripts({ dir, maxAgeMs: 60 * 60 * 1000 });
+    expect(removed).toBe(1);
+    expect(fs.existsSync(old)).toBe(false);
+  });
+
+  it('keeps recent scripts and unrelated files', () => {
+    const recent = write('wsl-cleaner-diskusage-cafe.sh', 0);            // just created
+    const unrelated = write('some-other-file.sh', 2 * 60 * 60 * 1000);  // old but not ours
+    const removed = wslOps.sweepTempScripts({ dir, maxAgeMs: 60 * 60 * 1000 });
+    expect(removed).toBe(0);
+    expect(fs.existsSync(recent)).toBe(true);
+    expect(fs.existsSync(unrelated)).toBe(true);
+  });
+
+  it('sweeps .ps1 and .log artifacts too, but not other extensions', () => {
+    write('wsl-cleaner-optimize-1.ps1', 2 * 60 * 60 * 1000);
+    write('wsl-cleaner-optimize-1.log', 2 * 60 * 60 * 1000);
+    const keep = write('wsl-cleaner-notes-1.txt', 2 * 60 * 60 * 1000);
+    const removed = wslOps.sweepTempScripts({ dir, maxAgeMs: 60 * 60 * 1000 });
+    expect(removed).toBe(2);
+    expect(fs.existsSync(keep)).toBe(true);
+  });
+
+  it('returns 0 for a non-existent directory without throwing', () => {
+    expect(wslOps.sweepTempScripts({ dir: path.join(dir, 'nope') })).toBe(0);
   });
 });
