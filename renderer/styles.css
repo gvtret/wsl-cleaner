@@ -1005,6 +1005,16 @@ a:hover {
   background: white;
 }
 
+/* Settings toggle rows (e.g., Disk Compaction) */
+.stale-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.stale-toggle-label {
+  line-height: 22px; /* match toggle height */
+}
+
 .task-info {
   flex: 1;
   min-width: 0;
@@ -1139,7 +1149,8 @@ a:hover {
 }
 
 .vhdx-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 120px 1fr;
   align-items: center;
   gap: 12px;
 }
@@ -1147,12 +1158,17 @@ a:hover {
 .vhdx-row .label {
   color: var(--text-secondary);
   font-size: 13px;
-  min-width: 100px;
+  white-space: nowrap;
 }
 
 .vhdx-row .value {
   font-size: 13px;
   color: var(--text-primary);
+  min-width: 0;
+  line-height: 1.4;
+  text-align: right;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .mono {

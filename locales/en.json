@@ -53,6 +53,7 @@
   "simple.estimateLabel": "Estimated reclaimable:",
   "simple.cleanCompact": "Clean &amp; Compact",
   "simple.clean": "Clean",
+  "simple.vhdxNotFoundCompactDisabled": "VHDX not found — running Clean only (compaction disabled).",
   "simple.disclaimer": "This deletes temporary files &amp; caches. Use <strong>Settings</strong> to control exactly what will be cleaned. Designed for WSL partitions used for development.",
   "simple.step.cleanup": "Running cleanup tasks...",
   "simple.step.fstrim": "Running filesystem TRIM...",
