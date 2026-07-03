@@ -742,6 +742,24 @@
                     </div>
                   </div>
                 </div>
+                <!-- WSL Containers (wslc) -->
+                <div class="health-detail-card" id="health-wslc-card">
+                  <div class="health-detail-header" data-i18n="health.wslc">WSL Containers</div>
+                  <div class="health-detail-body">
+                    <div class="health-kv-row">
+                      <span class="health-kv-label" data-i18n="health.wslcRunning">Running</span>
+                      <span class="health-kv-value health-badge-inline" id="health-wslc-running">0</span>
+                    </div>
+                    <div class="health-kv-row">
+                      <span class="health-kv-label" data-i18n="health.wslcStopped">Stopped</span>
+                      <span class="health-kv-value" id="health-wslc-stopped">0</span>
+                    </div>
+                    <div class="health-kv-row">
+                      <span class="health-kv-label" data-i18n="health.wslcTotal">Total</span>
+                      <span class="health-kv-value" id="health-wslc-total">0</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <!-- Systemd (full-width) -->
@@ -781,6 +799,10 @@
               <div class="health-detail-card">
                 <div class="health-detail-header" data-i18n="health.systemInfo">System Info</div>
                 <div class="health-detail-body">
+                  <div class="health-kv-row">
+                    <span class="health-kv-label" data-i18n="health.wslVersion">WSL Version</span>
+                    <span class="health-kv-value mono" id="health-wsl-version">--</span>
+                  </div>
                   <div class="health-kv-row">
                     <span class="health-kv-label" data-i18n="health.packages">Installed Packages</span>
                     <span class="health-kv-value mono" id="health-packages">--</span>
@@ -1073,6 +1095,8 @@
                       <option value="">—</option>
                       <option value="nat">NAT</option>
                       <option value="mirrored">Mirrored</option>
+                      <option value="consomme">Consomme</option>
+                      <option value="virtioproxy">VirtioProxy (legacy)</option>
                     </select>
                   </div>
                 </div>
@@ -1117,6 +1141,8 @@
                   </div>
                 </div>
 
+                <div class="config-section-label" data-i18n="config.experimentalSection">Experimental</div>
+
                 <div class="config-field">
                   <div class="config-field-info">
                     <label class="config-field-label" data-i18n="config.field.autoMemoryReclaim">Auto Memory Reclaim</label>
@@ -1139,16 +1165,6 @@
                   </div>
                   <div class="config-field-control">
                     <label class="config-toggle"><input type="checkbox" id="cfg-wsl2-sparseVhd" /><span class="config-toggle-slider"></span></label>
-                  </div>
-                </div>
-
-                <div class="config-field">
-                  <div class="config-field-info">
-                    <label class="config-field-label" data-i18n="config.field.pageReporting">Page Reporting</label>
-                    <span class="config-field-desc" data-i18n="config.field.pageReporting.desc">Report unused memory pages</span>
-                  </div>
-                  <div class="config-field-control">
-                    <label class="config-toggle"><input type="checkbox" id="cfg-wsl2-pageReporting" /><span class="config-toggle-slider"></span></label>
                   </div>
                 </div>
 

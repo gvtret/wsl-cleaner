@@ -4,7 +4,7 @@ const { TASKS, CATEGORIES } = require('../renderer/tasks');
 // Valid tool names that the app detects via `which` in WSL
 const VALID_TOOL_NAMES = [
   'apt', 'dnf', 'npm', 'yarn', 'pnpm', 'go', 'pip', 'pip3',
-  'composer', 'snap', 'docker', 'mvn', 'gradle', 'conda',
+  'composer', 'snap', 'docker', 'wslc', 'mvn', 'gradle', 'conda',
   'gem', 'dotnet', 'deno', 'bun', 'dart', 'brew', 'ccache', 'bazel',
   'terraform', 'minikube', 'sbt', 'conan',
 ];
@@ -62,6 +62,40 @@ describe('TASKS array integrity', () => {
         expect(typeof task.aggressive).toBe('boolean');
       }
     }
+  });
+
+  it('host field is boolean when present', () => {
+    for (const task of TASKS) {
+      if ('host' in task) {
+        expect(typeof task.host).toBe('boolean');
+      }
+    }
+  });
+
+  it('has the wslc-prune host task for WSL 2.9+', () => {
+    const wslc = TASKS.find(t => t.id === 'wslc-prune');
+    expect(wslc).toBeDefined();
+    expect(wslc.host).toBe(true);
+    expect(wslc.requires).toBe('wslc');
+  });
+
+  it('vscode-old-bins command avoids awk (bash -lc quoting regression)', () => {
+    const task = TASKS.find(t => t.id === 'vscode-old-bins');
+    expect(task).toBeDefined();
+    expect(task.command).not.toMatch(/\bawk\b/);
+    expect(task.command).toContain('find');
+  });
+
+  it('git-gc skips empty paths before compacting', () => {
+    const task = TASKS.find(t => t.id === 'git-gc');
+    expect(task.command).toMatch(/\[ -n "\$gitdir" \]/);
+    expect(task.command).toMatch(/\[ -n "\$repo" \]/);
+  });
+
+  it('docker-prune skips when daemon is not running', () => {
+    const task = TASKS.find(t => t.id === 'docker-prune');
+    expect(task.command).toMatch(/docker info/);
+    expect(task.command).toMatch(/exit 0/);
   });
 
   it('has at least one aggressive task', () => {

@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld('wslCleaner', {
   // WSL detection
   checkWsl: () => ipcRenderer.invoke('check-wsl'),
   detectTools: (distro) => ipcRenderer.invoke('detect-tools', distro),
+  detectHostTools: () => ipcRenderer.invoke('detect-host-tools'),
+  getWslHostInfo: () => ipcRenderer.invoke('get-wsl-host-info'),
 
   // Cleanup tasks
   runCleanup: (opts) => ipcRenderer.invoke('run-cleanup', opts),

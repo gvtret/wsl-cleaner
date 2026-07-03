@@ -3302,6 +3302,18 @@ a:hover {
   min-width: 0;
   flex: 1;
 }
+.config-section-label {
+  grid-column: 1 / -1;
+  margin: 16px 0 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
 .config-field-label {
   font-size: 13px;
   font-weight: 500;

@@ -10,6 +10,7 @@ let state = {
   vhdxByDistro: {},       // { "Ubuntu": [{ path, size }], ... }
   tools: {},              // merged tool availability across selected distros
   vhdxFiles: [],          // merged VHDX list across selected distros
+  wslHostVersion: null,     // from checkWsl / getWslHostInfo (WSL 2.9+)
   taskEnabled: {},
   taskSearch: '',          // search filter for task cards
   
@@ -494,13 +495,15 @@ async function refreshDistroData() {
   state.toolsByDistro = {};
   state.vhdxByDistro = {};
 
+  const hostTools = await window.wslCleaner.detectHostTools();
+
   for (const distro of state.selectedDistros) {
     state.toolsByDistro[distro] = await window.wslCleaner.detectTools(distro);
     state.vhdxByDistro[distro] = await window.wslCleaner.findVhdx(distro);
   }
 
-  // Merge tools: available if ANY selected distro has it
-  const mergedTools = {};
+  // Merge tools: available if ANY selected distro has it (or host provides wslc)
+  const mergedTools = { ...hostTools };
   for (const distro of state.selectedDistros) {
     const dt = state.toolsByDistro[distro] || {};
     for (const [key, val] of Object.entries(dt)) {
@@ -1196,60 +1199,80 @@ btnSimpleGo.addEventListener('click', async () => {
 
   // Pre-compute total task count across all distros for sub-progress
   let cleanupTaskTotal = 0;
+  const hostTools = state.tools || {};
+  cleanupTaskTotal += TASKS.filter(task => {
+    if (!task.host || task.id === 'fstrim') return false;
+    if (!state.taskEnabled[task.id]) return false;
+    return !task.requires || hostTools[task.requires];
+  }).length;
   for (const distro of state.selectedDistros) {
     const distroTools = state.toolsByDistro[distro] || {};
     cleanupTaskTotal += TASKS.filter(task => {
-      if (task.id === 'fstrim') return false;
+      if (task.host || task.id === 'fstrim') return false;
       if (!state.taskEnabled[task.id]) return false;
       return !task.requires || distroTools[task.requires];
     }).length;
   }
 
-  for (const distro of state.selectedDistros) {
-    const distroTools = state.toolsByDistro[distro] || {};
-    const availableTasks = TASKS.filter(task => {
-      if (task.id === 'fstrim') return false; // fstrim runs separately in step 3
-      if (!state.taskEnabled[task.id]) return false;
-      const available = !task.requires || distroTools[task.requires];
-      return available;
+  const runOneCleanupTask = async (task, distro) => {
+    cleanupTaskIndex++;
+    const taskName = t('task.' + task.id + '.name') || task.name || task.id;
+    if (cleanupStepSub) {
+      cleanupStepSub.textContent = taskName + ' (' + cleanupTaskIndex + ' / ' + cleanupTaskTotal + ')';
+    }
+    simpleTotalRun++;
+    const beforeSpace = task.host ? null : await window.wslCleaner.getAvailableSpace(distro);
+    const result = await window.wslCleaner.runCleanup({
+      distro,
+      taskId: task.id,
+      command: task.command,
+      asRoot: task.asRoot,
+      host: !!task.host,
     });
-    for (const task of availableTasks) {
-      cleanupTaskIndex++;
-      const taskName = t('task.' + task.id + '.name') || task.name || task.id;
-      if (cleanupStepSub) {
-        cleanupStepSub.textContent = taskName + ' (' + cleanupTaskIndex + ' / ' + cleanupTaskTotal + ')';
-      }
-      simpleTotalRun++;
-      const beforeSpace = await window.wslCleaner.getAvailableSpace(distro);
-      const result = await window.wslCleaner.runCleanup({
-        distro,
-        taskId: task.id,
-        command: task.command,
-        asRoot: task.asRoot,
-      });
-      if (result.ok) {
-        simpleTotalOk++;
+    if (result.ok) {
+      simpleTotalOk++;
+      if (!task.host && beforeSpace?.ok) {
         const afterSpace = await window.wslCleaner.getAvailableSpace(distro);
-        if (beforeSpace.ok && afterSpace.ok) {
+        if (afterSpace.ok) {
           const delta = afterSpace.bytes - beforeSpace.bytes;
           if (delta > 0) {
             if (!taskSavingsMap[task.id]) {
               taskSavingsMap[task.id] = {
-                name: t('task.' + task.id + '.name') || task.name || task.id,
+                name: taskName,
                 spaceSaved: 0,
               };
             }
             taskSavingsMap[task.id].spaceSaved += delta;
           }
         }
-      } else {
-        simpleTotalFail++;
-        cleanupOk = false;
-        const taskName = t('task.' + task.id + '.name') || task.name || task.id;
-        const detail = (result.output || '').trim();
-        cleanupErrors.push('[' + taskName + '] ' + (detail || 'Exit code ' + result.code));
-        failedTasks.push({ name: taskName, distro, output: detail, code: result.code });
       }
+    } else {
+      simpleTotalFail++;
+      cleanupOk = false;
+      const detail = (result.output || '').trim();
+      cleanupErrors.push('[' + taskName + '] ' + (detail || 'Exit code ' + result.code));
+      failedTasks.push({ name: taskName, distro: task.host ? 'host' : distro, output: detail, code: result.code });
+    }
+  };
+
+  const hostTasks = TASKS.filter(task => {
+    if (!task.host || task.id === 'fstrim') return false;
+    if (!state.taskEnabled[task.id]) return false;
+    return !task.requires || hostTools[task.requires];
+  });
+  for (const task of hostTasks) {
+    await runOneCleanupTask(task, state.selectedDistros[0]);
+  }
+
+  for (const distro of state.selectedDistros) {
+    const distroTools = state.toolsByDistro[distro] || {};
+    const availableTasks = TASKS.filter(task => {
+      if (task.host || task.id === 'fstrim') return false;
+      if (!state.taskEnabled[task.id]) return false;
+      return !task.requires || distroTools[task.requires];
+    });
+    for (const task of availableTasks) {
+      await runOneCleanupTask(task, distro);
     }
   }
   if (cleanupStepSub) cleanupStepSub.textContent = '';
@@ -2286,7 +2309,15 @@ async function init() {
 
   state.distros = wslCheck.distros;
   state.selectedDistros = [wslCheck.defaultDistro];
-  statusText.textContent = t('status.readyCount', { count: wslCheck.distros.length });
+  state.wslHostVersion = wslCheck.version?.wsl || null;
+  if (wslCheck.version?.wsl) {
+    statusText.textContent = t('status.readyCountVersion', {
+      count: wslCheck.distros.length,
+      version: wslCheck.version.wsl,
+    });
+  } else {
+    statusText.textContent = t('status.readyCount', { count: wslCheck.distros.length });
+  }
 
   // Restore saved task preferences and settings (overlay on top of defaults)
   try {
@@ -2626,6 +2657,10 @@ function showHealthState(which) {
   else if (which === 'error') healthError.classList.remove('hidden');
 }
 
+function applyHealthHostInfo(hostInfo) {
+  if (hostInfo?.version?.wsl) state.wslHostVersion = hostInfo.version.wsl;
+}
+
 async function renderHealthPage() {
   populateHealthDistros();
 
@@ -2638,14 +2673,18 @@ async function renderHealthPage() {
   showHealthState('loading');
 
   try {
-    const result = await window.wslCleaner.getHealthInfo(distro);
+    const [result, hostInfo] = await Promise.all([
+      window.wslCleaner.getHealthInfo(distro),
+      window.wslCleaner.getWslHostInfo(),
+    ]);
     if (!result.ok) {
       console.error('[Health] Backend error:', result.error);
       healthErrorMsg.textContent = t('health.error') + (result.error ? '\n' + result.error : '');
       showHealthState('error');
       return;
     }
-    populateHealthData(result.data);
+    applyHealthHostInfo(hostInfo);
+    populateHealthData(result.data, hostInfo);
     showHealthState('content');
   } catch (err) {
     console.error('[Health] Exception:', err);
@@ -2654,7 +2693,7 @@ async function renderHealthPage() {
   }
 }
 
-function populateHealthData(data) {
+function populateHealthData(data, hostInfo) {
   // Summary cards
   const kernelEl = document.getElementById('health-kernel');
   const uptimeEl = document.getElementById('health-uptime');
@@ -2835,6 +2874,17 @@ function populateHealthData(data) {
     dockerCard.classList.add('hidden');
   }
 
+  // ── WSL Containers (wslc) ──
+  const wslcCard = document.getElementById('health-wslc-card');
+  if (hostInfo?.wslc) {
+    wslcCard.classList.remove('hidden');
+    document.getElementById('health-wslc-running').textContent = hostInfo.wslc.running;
+    document.getElementById('health-wslc-stopped').textContent = hostInfo.wslc.stopped;
+    document.getElementById('health-wslc-total').textContent = hostInfo.wslc.total;
+  } else {
+    wslcCard.classList.add('hidden');
+  }
+
   // ── Systemd ──
   const systemdCard = document.getElementById('health-systemd-card');
   if (data.systemd) {
@@ -2905,6 +2955,11 @@ function populateHealthData(data) {
   }
 
   // ── System Info ──
+  const wslVersionEl = document.getElementById('health-wsl-version');
+  if (wslVersionEl) {
+    wslVersionEl.textContent = hostInfo?.version?.wsl || state.wslHostVersion || '--';
+  }
+
   const packagesEl = document.getElementById('health-packages');
   packagesEl.textContent = data.packages != null ? data.packages.toLocaleString() : '--';
 
@@ -2946,9 +3001,13 @@ async function refreshHealthSilent() {
   if (!distro) return;
 
   try {
-    const result = await window.wslCleaner.getHealthInfo(distro);
+    const [result, hostInfo] = await Promise.all([
+      window.wslCleaner.getHealthInfo(distro),
+      window.wslCleaner.getWslHostInfo(),
+    ]);
     if (result.ok && state.currentPage === 'health') {
-      populateHealthData(result.data);
+      applyHealthHostInfo(hostInfo);
+      populateHealthData(result.data, hostInfo);
       showHealthState('content');
     }
   } catch (err) {
@@ -3821,9 +3880,8 @@ const WSL_CONFIG_FIELDS = [
   { id: 'cfg-wsl2-dnsProxy', section: 'wsl2', key: 'dnsProxy', type: 'bool' },
   { id: 'cfg-wsl2-autoProxy', section: 'wsl2', key: 'autoProxy', type: 'bool' },
   { id: 'cfg-wsl2-firewall', section: 'wsl2', key: 'firewall', type: 'bool' },
-  { id: 'cfg-wsl2-autoMemoryReclaim', section: 'wsl2', key: 'autoMemoryReclaim', type: 'select' },
-  { id: 'cfg-wsl2-sparseVhd', section: 'wsl2', key: 'sparseVhd', type: 'bool' },
-  { id: 'cfg-wsl2-pageReporting', section: 'wsl2', key: 'pageReporting', type: 'bool' },
+  { id: 'cfg-wsl2-autoMemoryReclaim', section: 'experimental', key: 'autoMemoryReclaim', type: 'select' },
+  { id: 'cfg-wsl2-sparseVhd', section: 'experimental', key: 'sparseVhd', type: 'bool' },
   { id: 'cfg-wsl2-nestedVirtualization', section: 'wsl2', key: 'nestedVirtualization', type: 'bool' },
   { id: 'cfg-wsl2-vmIdleTimeout', section: 'wsl2', key: 'vmIdleTimeout', type: 'number' },
   { id: 'cfg-wsl2-guiApplications', section: 'wsl2', key: 'guiApplications', type: 'bool' },
@@ -3887,6 +3945,24 @@ function cfgPopulateFields(fields, data) {
     const sectionData = data?.[f.section];
     const value = sectionData?.[f.key] ?? '';
     cfgSetFieldValue(f.id, value);
+  }
+}
+
+/** Read a .wslconfig field, including legacy [wsl2] placement of experimental keys. */
+function cfgGetWslFieldValue(data, field) {
+  const sectionData = data?.[field.section];
+  if (sectionData?.[field.key] != null && sectionData[field.key] !== '') {
+    return sectionData[field.key];
+  }
+  if (field.section === 'experimental' && data?.wsl2?.[field.key] != null) {
+    return data.wsl2[field.key];
+  }
+  return '';
+}
+
+function cfgPopulateWslConfigFields(data) {
+  for (const f of WSL_CONFIG_FIELDS) {
+    cfgSetFieldValue(f.id, cfgGetWslFieldValue(data, f));
   }
 }
 
@@ -3988,7 +4064,6 @@ function cfgOptimizeWslConfig() {
   cfgSetFieldValue('cfg-wsl2-firewall', true);
   cfgSetFieldValue('cfg-wsl2-autoMemoryReclaim', 'gradual');
   cfgSetFieldValue('cfg-wsl2-sparseVhd', true);
-  cfgSetFieldValue('cfg-wsl2-pageReporting', true);
   cfgSetFieldValue('cfg-wsl2-nestedVirtualization', false);
   cfgSetFieldValue('cfg-wsl2-guiApplications', true);
   cfgSetFieldValue('cfg-wsl2-debugConsole', false);
@@ -4038,7 +4113,7 @@ async function renderConfigPage() {
     try {
       const result = await window.wslCleaner.readWslConfig();
       if (result.ok) {
-        cfgPopulateFields(WSL_CONFIG_FIELDS, result.data);
+        cfgPopulateWslConfigFields(result.data);
         // Show the config path in the description
         if (result.path) {
           const descEl = $('#config-wslconfig-desc');

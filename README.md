@@ -79,6 +79,7 @@ Full control over every cleanup task. Each task has a toggle, a description expl
 - Clean Android SDK & Gradle Build Cache
 - Clean Python Bytecode -- `__pycache__` directories
 - Clean Docker Dangling Artifacts -- removes only dangling images, unused networks, and stale build cache (all named images, containers, and volumes are preserved)
+- Clean WSL Containers Dangling Artifacts -- prunes unused WSLC images, containers, and volumes via native `wslc` (WSL 2.9+; no Docker Desktop required)
 - Clean Terraform Plugin Cache
 - Clean Minikube Cache
 - Compact Git Repositories -- finds all repos under `/home` and runs `git reflog expire --expire=now --all` + `git gc --prune=now --aggressive`
@@ -128,8 +129,8 @@ Real-time system health dashboard for your WSL distributions. Auto-refreshes eve
 - **Disk & I/O** -- filesystem usage bar, I/O pressure (some/full percentages)
 - **Networking** -- interface RX/TX stats table, listening ports table, DNS resolution status (green/red indicator with server address)
 - **Processes** -- top 20 by CPU, zombie process detection with count and PID table
-- **Services** -- Docker container counts (running/stopped), systemd state with failed unit listing (filters out known-harmless WSL failures)
-- **System info** -- installed package count, GPU/CUDA availability, WSL interop status
+- **Services** -- Docker and WSL Containers (`wslc`) counts (running/stopped), systemd state with failed unit listing (filters out known-harmless WSL failures)
+- **System info** -- installed WSL version, installed package count, GPU/CUDA availability, WSL interop status
 - **WSL config** -- reads `.wslconfig` memory/swap limits and displays alongside actual usage
 
 ### Distros
@@ -173,8 +174,8 @@ GUI editor for `.wslconfig` (global) and per-distro `wsl.conf` files with valida
 
 **`.wslconfig` tab** -- global WSL 2 settings applied to all distros:
 - Memory limit, processor count, swap size, swap file path
-- Networking mode (NAT / Mirrored), localhost forwarding, DNS tunneling, DNS proxy, auto proxy, firewall
-- Auto memory reclaim (disabled / gradual / drop cache), sparse VHD, page reporting
+- Networking mode (NAT / Mirrored / Consomme), localhost forwarding, DNS tunneling, DNS proxy, auto proxy, firewall
+- Experimental: auto memory reclaim (disabled / gradual / drop cache), sparse VHD
 - Nested virtualization, VM idle timeout, GUI applications (WSLg), debug console, kernel command line
 
 **`wsl.conf` tab** -- per-distro settings with distro selector:

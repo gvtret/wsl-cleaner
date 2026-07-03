@@ -29,7 +29,8 @@ describe('distro management exports', () => {
 
   it('does not break existing exports', () => {
     const expectedExports = [
-      'wslEnv', 'checkWsl', 'detectTools', 'runCleanupTask',
+      'wslEnv', 'checkWsl', 'detectTools', 'detectHostTools', 'getWslHostInfo',
+      'runHostCleanupTask', 'runCleanupTask',
       'findVhdx', 'getFileSize', 'runWslCommand',
       'optimizeVhdx',
       'estimateTaskSizes', 'scanDiskUsage', 'cancelDiskScan', 'getHealthInfo',
