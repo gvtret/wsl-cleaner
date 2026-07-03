@@ -60,6 +60,9 @@ Tests
   ├── tests/cli.test.js              # Tests for CLI parseArgs, stripHtml, formatBytes
   ├── tests/i18n.test.js             # Tests for renderer/i18n.js (t, tp, tError)
   ├── tests/wsl-ops-distro.test.js   # Tests for distro management exports and signatures
+  ├── tests/wsl-compat.test.js       # Backward compat: WSL without version/wslc
+  ├── tests/wsl-config.test.js       # .wslconfig INI section handling
+  ├── tests/wsl-host.test.js         # WSL version parsing and wslc JSON
   └── tests/migrate.test.js          # Tests for distro migration functions
 ```
 

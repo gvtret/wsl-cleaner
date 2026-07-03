@@ -218,7 +218,7 @@ async function actionClean(opts) {
   const distro = resolveDistro(opts);
 
   if (!opts.json) info(`${c.bold}Detecting tools in ${distro}...${c.reset}`);
-  const tools = wslOps.detectTools(distro);
+  const tools = { ...wslOps.detectHostTools(), ...wslOps.detectTools(distro) };
 
   if (opts.verbose && !opts.json) {
     const available = Object.entries(tools).filter(([, v]) => v).map(([k]) => k);
@@ -233,6 +233,10 @@ async function actionClean(opts) {
     if (opts.exclude.includes(t.id)) return false;
     return true;
   });
+
+  const hostTasks = tasksToRun.filter(t => t.host);
+  const distroTasks = tasksToRun.filter(t => !t.host);
+  tasksToRun = [...hostTasks, ...distroTasks];
 
   // Validate --tasks IDs
   if (opts.tasks) {
@@ -291,13 +295,19 @@ async function actionClean(opts) {
       ? ({ text }) => process.stdout.write(`${c.dim}${text}${c.reset}`)
       : undefined;
 
-    const result = await wslOps.runCleanupTask({
-      distro,
-      taskId: task.id,
-      command: task.command,
-      asRoot: task.asRoot,
-      onOutput,
-    });
+    const result = task.host
+      ? await wslOps.runHostCleanupTask({
+        taskId: task.id,
+        command: task.command,
+        onOutput,
+      })
+      : await wslOps.runCleanupTask({
+        distro,
+        taskId: task.id,
+        command: task.command,
+        asRoot: task.asRoot,
+        onOutput,
+      });
 
     results.push({ id: task.id, name: label, ...result });
 

@@ -125,8 +125,8 @@ const TASKS = [
     id: 'vscode-old-bins',
     name: 'Clean Old VS Code / Cursor / Windsurf Server Binaries',
     desc: 'Removes old server binaries from <code>~/.vscode-server/bin</code>, <code>~/.cursor-server/bin</code>, and <code>~/.windsurf-server/bin</code>, keeping only the latest version. Each old version is ~200 MB.',
-    // Avoid shell-specific globbing errors (e.g. zsh "no matches found") by enumerating directories safely.
-    command: 'setopt nonomatch 2>/dev/null || true; set +o nomatch 2>/dev/null || true; for base in ~/.vscode-server/bin ~/.cursor-server/bin ~/.windsurf-server/bin; do [ -d "$base" ] || continue; latest=$(find "$base" -mindepth 1 -maxdepth 1 -type d -exec stat -c "%Y %n" {} + 2>/dev/null | sort -nr | head -1 | awk \'{ $1=""; sub(/^ /,""); print }\'); [ -z "$latest" ] && continue; find "$base" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | while IFS= read -r d; do [ "$d" = "$latest" ] && continue; echo "Removing old binary: $d"; rm -rf "$d"; done; done; echo "Old server binaries cleaned"',
+    // Use find -printf (no globs, no awk) so the command survives bash -lc quoting intact.
+    command: 'for base in ~/.vscode-server/bin ~/.cursor-server/bin ~/.windsurf-server/bin; do [ -d "$base" ] || continue; latest=$(find "$base" -mindepth 1 -maxdepth 1 -type d -printf \'%T@ %p\\n\' 2>/dev/null | sort -rn | head -1 | cut -d\' \' -f2-); [ -z "$latest" ] && continue; find "$base" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | while IFS= read -r d; do [ "$d" = "$latest" ] && continue; echo "Removing old binary: $d"; rm -rf "$d"; done; done; echo "Old server binaries cleaned"',
     asRoot: false,
     requires: null,
     category: 'user-editor',
@@ -259,6 +259,16 @@ const TASKS = [
     requires: 'docker',
     category: 'containers',
     // No estimateCommand — docker system df output is complex and fragile to parse
+  },
+  {
+    id: 'wslc-prune',
+    name: 'Clean WSL Containers Dangling Artifacts',
+    desc: 'Prunes unused WSL Containers (WSLC) images, stopped containers, and volumes via native <code>wslc</code> (WSL 2.9+). Does not require Docker Desktop.',
+    command: 'image prune|container prune|volume prune',
+    asRoot: false,
+    requires: 'wslc',
+    host: true,
+    category: 'containers',
   },
   {
     id: 'pip-cache',
@@ -454,7 +464,7 @@ const TASKS = [
     id: 'git-gc',
     name: 'Compact Git Repositories',
     desc: 'Finds all git repos under <code>/home</code> and aggressively compacts them: expires reflog entries and repacks objects with maximum compression. Branches, tags, and reachable commits are untouched. Reflog recovery history is lost.',
-    command: 'find /home -maxdepth 6 -type d -name .git 2>/dev/null | while IFS= read -r gitdir; do repo=$(dirname "$gitdir"); echo "Compacting: $repo"; git -C "$repo" reflog expire --expire=now --all 2>/dev/null; git -C "$repo" gc --prune=now --aggressive 2>/dev/null; done; echo "Git compaction complete"',
+    command: 'find /home -maxdepth 6 -type d -name .git 2>/dev/null | while IFS= read -r gitdir; do [ -n "$gitdir" ] || continue; [ -d "$gitdir" ] || continue; repo=$(dirname "$gitdir"); [ -n "$repo" ] && [ "$repo" != "." ] || continue; echo "Compacting: $repo"; git -C "$repo" reflog expire --expire=now --all 2>/dev/null; git -C "$repo" gc --prune=now --aggressive 2>/dev/null; done; echo "Git compaction complete"',
     asRoot: true,
     requires: null,
     category: 'containers',

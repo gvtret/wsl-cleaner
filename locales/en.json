@@ -30,6 +30,7 @@
   "status.detecting": "Detecting WSL 2...",
   "status.ready": "WSL 2 Ready",
   "status.readyCount": "WSL 2 Ready — {count} distro(s) found",
+  "status.readyCountVersion": "WSL 2 Ready — {count} distro(s) — v{version}",
 
   "distro.none": "No distro",
   "distro.count": "{count} distros selected",
@@ -266,6 +267,11 @@
   "health.dockerTotal": "Total",
   "health.noDocker": "Docker not installed.",
 
+  "health.wslc": "WSL Containers",
+  "health.wslcRunning": "Running",
+  "health.wslcStopped": "Stopped",
+  "health.wslcTotal": "Total",
+
   "health.systemd": "Systemd",
   "health.systemdState": "State",
   "health.systemdRunning": "All services are running normally.",
@@ -279,6 +285,7 @@
   "health.noSystemd": "Systemd not available.",
 
   "health.systemInfo": "System Info",
+  "health.wslVersion": "WSL Version",
   "health.packages": "Installed Packages",
   "health.gpu": "GPU",
   "health.gpuNone": "Not available",
@@ -345,6 +352,8 @@
   "task.android-cache.desc": "Removes <code>~/.android/cache</code>, <code>~/.android/build-cache</code>, and Gradle project <code>build/</code> directories. Mobile devs can have 5&ndash;20 GB here.",
   "task.docker-prune.name": "Clean Docker Dangling Artifacts",
   "task.docker-prune.desc": "Removes dangling (untagged) images, unused networks, and stale build cache. All named/tagged images, containers, and volumes are preserved.",
+  "task.wslc-prune.name": "Clean WSL Containers Dangling Artifacts",
+  "task.wslc-prune.desc": "Prunes unused WSL Containers (WSLC) images, stopped containers, and volumes via native <code>wslc</code> (WSL 2.9+). Does not require Docker Desktop.",
   "task.pip-cache.name": "Clean Pip Cache Directory",
   "task.pip-cache.desc": "Removes downloaded pip packages from <code>~/.cache/pip</code>.",
   "task.pnpm-cache.name": "Clean pnpm Store",
@@ -619,6 +628,7 @@
 
   "config.title": "WSL Config Editor",
   "config.tabWslconfig": ".wslconfig",
+  "config.experimentalSection": "Experimental settings ([experimental] section)",
   "config.tabWslconf": "wsl.conf",
   "config.wslconfigDesc": "Global settings that apply to all WSL 2 distros. Located at <strong>{path}</strong>.",
   "config.wslconfDesc": "Per-distro settings. Located at <strong>/etc/wsl.conf</strong> inside the selected distro.",
@@ -657,7 +667,7 @@
   "config.field.localhostForwarding": "Localhost Forwarding",
   "config.field.localhostForwarding.desc": "Forward ports bound to localhost in WSL to the host",
   "config.field.networkingMode": "Networking Mode",
-  "config.field.networkingMode.desc": "NAT (default) or Mirrored (shares host network interfaces)",
+  "config.field.networkingMode.desc": "NAT (default), Mirrored, or Consomme (routes Linux traffic through Windows; VirtioProxy alias)",
   "config.field.dnsTunneling": "DNS Tunneling",
   "config.field.dnsTunneling.desc": "Tunnel DNS requests for better VPN compatibility",
   "config.field.dnsProxy": "DNS Proxy",
@@ -670,8 +680,6 @@
   "config.field.autoMemoryReclaim.desc": "How WSL returns unused memory to the host",
   "config.field.sparseVhd": "Sparse VHD",
   "config.field.sparseVhd.desc": "Use sparse VHDX files to save disk space automatically",
-  "config.field.pageReporting": "Page Reporting",
-  "config.field.pageReporting.desc": "Report unused memory pages back to the Windows host",
   "config.field.nestedVirtualization": "Nested Virtualization",
   "config.field.nestedVirtualization.desc": "Enable VMs inside WSL 2 (e.g. Docker-in-Docker)",
   "config.field.vmIdleTimeout": "VM Idle Timeout",

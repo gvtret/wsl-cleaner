@@ -123,6 +123,36 @@ describe('runWslCommand — only "wsl" is permitted', () => {
   });
 });
 
+// ── #6 runHostCleanupTask wslc allowlist ──────────────────────────────────────
+
+describe('runHostCleanupTask — only allowlisted wslc prune steps', () => {
+  it('rejects a non-allowlisted wslc step without spawning', async () => {
+    const res = await wslOps.runHostCleanupTask({ taskId: 't', command: 'run evil' });
+    expect(res.ok).toBe(false);
+    expect(res.output).toMatch(/Disallowed/i);
+    expect(calls.spawn).toHaveLength(0);
+  });
+
+  it('rejects docker-style -f flag (wslc -f is --filter, not force)', async () => {
+    const res = await wslOps.runHostCleanupTask({
+      taskId: 't',
+      command: 'image prune -f',
+    });
+    expect(res.ok).toBe(false);
+    expect(res.output).toMatch(/Disallowed/i);
+    expect(calls.spawn).toHaveLength(0);
+  });
+
+  it('rejects shell metacharacters in a step', async () => {
+    const res = await wslOps.runHostCleanupTask({
+      taskId: 't',
+      command: 'image prune; calc.exe',
+    });
+    expect(res.ok).toBe(false);
+    expect(calls.spawn).toHaveLength(0);
+  });
+});
+
 // ── Startup sweep of orphaned temp scripts ────────────────────────────────────
 
 describe('sweepTempScripts', () => {

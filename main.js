@@ -268,6 +268,10 @@ ipcMain.handle('open-external-url', async (_event, url) => {
 
 ipcMain.handle('check-wsl', async () => wslOps.checkWsl());
 
+ipcMain.handle('detect-host-tools', async () => wslOps.detectHostTools());
+
+ipcMain.handle('get-wsl-host-info', async () => wslOps.getWslHostInfo());
+
 // ── Detect available tools inside WSL ────────────────────────────────────────
 
 ipcMain.handle('detect-tools', async (_event, distro) => wslOps.detectTools(distro));
@@ -278,11 +282,11 @@ let cleanupQueue = Promise.resolve();
 
 ipcMain.handle('run-cleanup', async (event, opts) => {
   const onOutput = (data) => emitTaskOutput(data);
-  // Queue each task so they run strictly one at a time
+  const run = opts.host
+    ? () => wslOps.runHostCleanupTask({ ...opts, onOutput })
+    : () => wslOps.runCleanupTask({ ...opts, onOutput });
   const result = new Promise((resolve) => {
-    cleanupQueue = cleanupQueue.then(() =>
-      wslOps.runCleanupTask({ ...opts, onOutput }).then(resolve)
-    );
+    cleanupQueue = cleanupQueue.then(() => run().then(resolve));
   });
   return result;
 });

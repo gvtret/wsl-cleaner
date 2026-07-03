@@ -1,3 +1,17 @@
+# [1.9.0](https://github.com/dbfx/wsl-cleaner/compare/v1.8.0...v1.9.0) (2026-07-03)
+
+
+### Features
+
+* WSL 2.9.3 support: WSL Containers (`wslc`) prune task, health dashboard card, host tool detection
+* Config Editor: write experimental keys to `[experimental]` section; add Consomme networking mode
+* Show installed WSL version in status bar and Health dashboard
+
+### Fixes
+
+* `vscode-old-bins` cleanup command (no awk quoting errors through `bash -lc`)
+* `git-gc` skip empty repository paths in log output
+
 # [1.8.0](https://github.com/dbfx/wsl-cleaner/compare/v1.7.1...v1.8.0) (2026-02-24)
 
 
